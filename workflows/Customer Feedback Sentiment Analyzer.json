@@ -1,0 +1,989 @@
+{
+  "name": "Customer Feedback Sentiment Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Review Website Analyzer",
+        "formDescription": "Enter the website name to be analyzed",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Website",
+              "placeholder": "website link"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -3088,
+        -1024
+      ],
+      "id": "7e361aef-d198-4d61-b3b7-0bf2dc4c62e7",
+      "name": "On form submission",
+      "webhookId": "6fb6b050-d9d9-484d-8428-ee427d0a9fa1"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  let website = item.json.Website || \"\";\n\n  // Add protocol if missing\n  if (!/^https?:\\/\\//i.test(website)) {\n    website = \"https://\" + website;\n  }\n\n  // Extract domain using regex\n  const match = website.match(/^(?:https?:\\/\\/)?(?:www\\.)?([^\\/]+)/i);\n  item.json.domain = match ? match[1] : null;\n}\n\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2864,
+        -1024
+      ],
+      "id": "907b121e-0cc3-406f-9d7c-fa30b99125ff",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json?engine=google_maps_reviews&data_id={{ $json.place_results.data_id }}&api_key=8884295cfa0f1021fcf66a5bf90388788936c6054f29d0c7298ea62e21a47420",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2416,
+        -1024
+      ],
+      "id": "72761b83-8c0d-4d6d-870b-5ff9d6ea882a",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================================================\n// 🔹 SerpApi Multi-page Review Fetcher (Safe, Recursive Pagination)\n// ====================================================================\n\n// 🧠 Initialize\nlet allReviews = [];\nlet nextPage = $json.serpapi_pagination?.next || null;\nlet pageCount = 1;\n\n// 🔐 Your SerpApi API Key\nconst apiKey = '8884295cfa0f1021fcf66a5bf90388788936c6054f29d0c7298ea62e21a47420'; // replace with your key\n\n// Function to extract only required fields\nfunction filterReview(review) {\n  return {\n    name: review.user?.name || \"Unknown\",\n    rating: review.rating || \"Not rated\",\n    snippet: review.snippet || review.original || \"No snippet available\",\n    iso_date: review.iso_date || null\n  };\n}\n\n// 🧩 Add current page reviews first\nif ($json.reviews && Array.isArray($json.reviews)) {\n  allReviews.push(...$json.reviews.map(filterReview));\n}\n\n// 🌀 Fetch remaining pages safely\nwhile (nextPage) {\n  console.log(`📄 Fetching page ${pageCount + 1}...`);\n  try {\n    const urlWithKey = nextPage.includes('api_key=') ? nextPage : `${nextPage}&api_key=${apiKey}`;\n\n    const response = await this.helpers.httpRequest({\n      method: 'GET',\n      url: urlWithKey,\n      headers: { 'Accept': 'application/json' },\n      json: true\n    });\n\n    if (response.reviews && Array.isArray(response.reviews)) {\n      allReviews.push(...response.reviews.map(filterReview));\n      console.log(`✅ Page ${pageCount + 1}: ${response.reviews.length} reviews fetched`);\n    }\n\n    nextPage = response.serpapi_pagination?.next || null;\n    pageCount++;\n\n    // ⏱ Optional delay to prevent rate-limits\n    await new Promise(resolve => setTimeout(resolve, 1000));\n\n  } catch (error) {\n    console.error(`❌ Error fetching page ${pageCount + 1}:`, error.message);\n    break;\n  }\n}\n\n// 🎯 Return all reviews in n8n format\nreturn allReviews.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        -1024
+      ],
+      "id": "bd2537e7-74b6-4960-9824-b9a34cbb2b03",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "url": "=https://serpapi.com/search.json?engine=google_maps&q={{ $json.domain }}&api_key=8884295cfa0f1021fcf66a5bf90388788936c6054f29d0c7298ea62e21a47420",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2640,
+        -1024
+      ],
+      "id": "1b7074fe-badf-4a51-ae9a-bb416788a316",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ",
+          "mode": "list",
+          "cachedResultName": "Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "review",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "snippet",
+              "displayName": "snippet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1744,
+        -1024
+      ],
+      "id": "b82de6d5-2835-43f4-98dd-2cdf81064345",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6lUsp6QyxNZYBraQ",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assuming allReviews contains all 1303 reviews\nconst allReviews = $input.all().map(item => item.json);\n\n// Map and split iso_date into date and time, remove iso_date\nconst output = allReviews.map(review => {\n  const iso = review.iso_date;\n  let date = null;\n  let time = null;\n\n  if (iso) {\n    const split = iso.split('T'); // [\"2025-10-20\", \"14:34:59Z\"]\n    date = split[0];\n    time = split[1] ? split[1].replace('Z', '') : null;\n  }\n\n  return {\n    json: {\n      name: review.name,\n      rating: review.rating,\n      snippet: review.snippet,\n      date,\n      time\n    }\n  };\n});\n\n// Return array for n8n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        -1024
+      ],
+      "id": "ba44a5b8-390d-4bf4-b428-1fe3de3e63fb",
+      "name": "Code in JavaScript10"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        -464
+      ],
+      "id": "8a21b4b7-83fb-4672-b1d6-adb6b8399e71",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ",
+          "mode": "list",
+          "cachedResultName": "Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "review",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2864,
+        -464
+      ],
+      "id": "aa524f99-0ede-487c-bf33-01c2def63fe5",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6lUsp6QyxNZYBraQ",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: array of reviews\nconst reviews = $input.all().map(item => item.json);\n\n// Group reviews by month\nconst groupedByMonth = {};\n\nreviews.forEach(review => {\n    const month = review.date ? review.date.slice(0, 7) : \"Unknown\"; // YYYY-MM\n    if (!groupedByMonth[month]) {\n        groupedByMonth[month] = [];\n    }\n    groupedByMonth[month].push(review);\n});\n\n// Convert object to array of objects n8n can accept\nconst output = Object.entries(groupedByMonth).map(([month, reviewsArray]) => ({\n    json: {\n        month: month,\n        reviews: reviewsArray\n    }\n}));\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2640,
+        -464
+      ],
+      "id": "991d40ff-2b5b-4ede-9b3f-c7860dabef45",
+      "name": "Code in JavaScript11"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2416,
+        -464
+      ],
+      "id": "a3ea2959-d4d3-410d-9d5f-738bce95df43",
+      "name": "Loop Over Items",
+      "retryOnFail": true,
+      "waitBetweenTries": 30
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ",
+          "mode": "list",
+          "cachedResultName": "Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 338421555,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit#gid=338421555"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1392,
+        -688
+      ],
+      "id": "54857a62-fa5f-439d-871f-743456613315",
+      "name": "Clear sheet1",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6lUsp6QyxNZYBraQ",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ",
+          "mode": "list",
+          "cachedResultName": "Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 338421555,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mpEneyADtCIAcjXuZq3Lc0wZZTaL6nKxjyN7sFKnbzQ/edit#gid=338421555"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "myNewField",
+              "displayName": "myNewField",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1392,
+        -496
+      ],
+      "id": "2ad14e44-28be-45db-ba03-ff593163ab34",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6lUsp6QyxNZYBraQ",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json[\"reviewData\"] }}",
+        "options": {
+          "systemMessage": "You are an intelligent review analysis assistant.\n\nYou will be given an array of user reviews in JSON format. Each review contains these fields: row_number, name, sentiment, emotion, and topics.\n\nYour task is to analyze the reviews carefully and produce a structured, professional, and easy-to-read summary with bullet points. Your summary must include numerical counts of users per topic based on their sentiment.\n\nThe output must include:\n\nOverall Summary:\n\nGeneral sentiment trend (predominantly positive, negative, or mixed).\n\nNumber of reviews in each sentiment category (Positive, Neutral, Negative).\n\nDominant emotions (with bullet points).\n\nPositive Highlights (with counts):\n\nList key topics frequently mentioned in reviews with Positive sentiment.\n\nInclude the number of users who mentioned each topic positively.\n\nUse short, clear bullet points.\n\nNegative / Neutral Highlights (with counts):\n\nList key topics mentioned in reviews with Negative or Neutral sentiment.\n\nInclude the number of users who mentioned each topic negatively or neutrally.\n\nUse bullet points for clarity.\n\nExample output format:\n\nOverall Summary:\n\nMajority of reviews are positive (12 out of 16), with emotions like Satisfied and Impressed.\n\nA few neutral reviews (2 reviews) indicate mild disappointment.\n\nPositive Highlights:\n\nFood quality and variety – 12 users\n\nAmbience – 14 users\n\nStaff behavior – 10 users\n\nNegative / Neutral Highlights:\n\nFood (quantity/portion) – 2 users\n\nPrice – 2 users\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -944,
+        -304
+      ],
+      "id": "43197f2a-4c29-41e7-956e-d6ccb8673e18",
+      "name": "AI Agent4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -80
+      ],
+      "id": "30f3ab40-dae3-4b8e-a8a3-6c8e5c72ae0c",
+      "name": "Google Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JaJBurZRZS5adHyV",
+          "name": "Google Gemini(PaLM) Api account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json[\"reviewData\"] }}",
+        "options": {
+          "systemMessage": "You are an intelligent review analysis assistant.\n\nYou will receive a JSON array (as a string) under the key \"reviewData\".\nEach review includes:\n- name\n- sentiment (Positive / Neutral / Negative)\n- emotion\n- topics (list of subjects mentioned)\n\nYour task:\n1. Focus ONLY on reviews where sentiment is \"Negative\".\n2. For each negative review, list personalized suggestions based on the topics.\n3. After that, find common topics mentioned across multiple negative reviews and provide a summarized suggestion for each.\n\n⚠️ Important:\n- Return output in **plain text only** (no JSON, no code block, no markdown syntax, no backticks).\n- Use this exact format:\n\nIndividual Review Suggestions (Negative Reviews Only)\n\n<Name> (Negative, <Emotion>)\n• <Topic> – <Actionable suggestion>\n\nCommon Issues Among Negative Reviews\n\nCommon Issue: <Topic>\n• Reviewers: <Name1>, <Name2>\n• Personalized Suggestion: <Actionable suggestion>\n\nReturn only the text output as shown above.\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -944,
+        -800
+      ],
+      "id": "57ff09b0-beb9-460e-852e-2d0f2bc1d813",
+      "name": "AI Agent6"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -576
+      ],
+      "id": "617bb196-f157-4633-884a-a6f3425b790f",
+      "name": "Google Gemini Chat Model6",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JaJBurZRZS5adHyV",
+          "name": "Google Gemini(PaLM) Api account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "output",
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -592,
+        -496
+      ],
+      "id": "89386d9f-d361-4280-b5fc-ce0fef544f7b",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all input items\nconst items = $input.all();\n\n// Concatenate all 'output' strings from the input items\nlet combinedOutput = items.map(item => item.json.output).join(\"\\n\\n\");\n\n// Return a single item with the concatenated result\nreturn [\n  {\n    json: {\n      output: combinedOutput\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -496
+      ],
+      "id": "8fc5b998-34f0-49b5-8863-c2f9697ad525",
+      "name": "Code in JavaScript14"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a review analysis assistant. \n\nYou will receive an input containing user review summaries, including textual mentions of reviews, emotions, highlights, and suggestions. Your task is to convert this into a **structured JSON object** in the following format:\n\n{\n    \"year\": <numeric year>,\n    \"month\": <numeric month>,\n    \"positiveReviews\": <count of positive reviews>,\n    \"neutralReviews\": <count of neutral reviews>,\n    \"negativeReviews\": <count of negative reviews>,\n    \"dominantEmotions\": [\n      { \"name\": \"<emotion name>\", \"count\": <count> },\n      ...\n    ],\n    \"strengths\": [\n      { \"name\": \"<strength aspect>\", \"count\": <count> },\n      ...\n    ],\n    \"improvements\": [\n      { \"name\": \"<aspect to improve>\", \"count\": <count> },\n      ...\n    ],\n    \"issues\": [\n      {\n        \"category\": \"<issue category>\",\n        \"reviewers\": [\"<list of reviewer names if mentioned, otherwise []>\"],\n        \"suggestion\": \"<suggested action>\"\n      }\n    ],\n    \"source\": \"Thoughtbins_Automated_Analysis_Team\",\n    \"generatedAt\": \"<current ISO timestamp>\"\n}\n\n**Instructions to follow strictly:**\n\n1. **Actual counts only:** Count the exact number of mentions in the input text for positive, neutral, negative reviews, emotions, strengths, and improvements. Do not estimate.  \n2. **Dominant emotions:** List every emotion mentioned and its exact count.  \n3. **Strengths:** Include every aspect that was praised in the text and its exact count.  \n4. **Improvements:** Include every aspect that received negative or improvement feedback and its exact count.  \n5. **Issues:** For each issue, extract the category, reviewers (if listed), and actionable suggestion exactly as mentioned. If no reviewers are listed, use an empty array.  \n6. **Maintain strict JSON structure:** Do not add extra fields. Use only integers for counts.  \n7. **Use current date-time in ISO 8601 format** for `generatedAt`.  \n8. Map all fields directly from the text, ignoring assumptions or estimations.\n\ninput format : String  \n\n\n**Expected Output Format Example:**  \n{\n    \"year\": 2025,\n    \"month\": 9,\n    \"positiveReviews\": 68,\n    \"neutralReviews\": 2,\n    \"negativeReviews\": 1,\n    \"dominantEmotions\": [\n      { \"name\": \"Satisfied\", \"count\": 47 },\n      { \"name\": \"Impressed\", \"count\": 21 },\n      { \"name\": \"Disappointed\", \"count\": 2 },\n      { \"name\": \"Neutral\", \"count\": 1 }\n    ],\n    \"strengths\": [\n      { \"name\": \"Food\", \"count\": 30 },\n      { \"name\": \"Ambience\", \"count\": 16 },\n      { \"name\": \"Coffee\", \"count\": 14 },\n      { \"name\": \"Service\", \"count\": 8 },\n      { \"name\": \"Price\", \"count\": 4 },\n      { \"name\": \"Staff\", \"count\": 1 },\n      { \"name\": \"Overall Experience\", \"count\": 1 },\n      { \"name\": \"Extras\", \"count\": 1 }\n    ],\n    \"improvements\": [\n      { \"name\": \"Food\", \"count\": 2 },\n      { \"name\": \"Drinks\", \"count\": 2 },\n      { \"name\": \"Service\", \"count\": 2 },\n      { \"name\": \"Ambience\", \"count\": 1 },\n      { \"name\": \"Price\", \"count\": 1 },\n      { \"name\": \"Ratings\", \"count\": 1 }\n    ],\n    \"issues\": [\n      {\n        \"category\": \"Food\",\n        \"reviewers\": [\"ChiShyong Li\"],\n        \"suggestion\": \"Implement a quality control process for all food items and gather feedback on specific dishes to improve taste and presentation.\"\n      }\n    ],\n    \"source\": \"Thoughtbins_Automated_Analysis_Team\",\n    \"generatedAt\": \"2025-10-31T23:59:59.000Z\"\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -144,
+        -496
+      ],
+      "id": "78207efd-c8d0-4e0c-b7a3-efe2f924a305",
+      "name": "AI Agent7"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -320
+      ],
+      "id": "1f189ed5-4c52-4d44-9b3b-50281ad22f11",
+      "name": "Google Gemini Chat Model7",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JaJBurZRZS5adHyV",
+          "name": "Google Gemini(PaLM) Api account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://picoadmin.thoughtbins.in/api/reports/sentiment",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "[\n  {\n    \"name\": \"Content-Type\",\n    \"value\": \"application/json\"\n  }\n]",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $input.item.json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        -368
+      ],
+      "id": "d2dac47c-09e7-48e3-b561-fb06f377eb97",
+      "name": "HTTP Request2",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst rows = items.map(item => ({\n  row_number: item.json.row_number,\n  name: item.json.name,\n  sentiment: item.json.sentiment,\n  emotion: item.json.emotion,\n  topics: item.json.topics\n}));\n\n// Convert array into a readable JSON string\nconst reviewData = JSON.stringify(rows, null, 2);\n\nreturn [{ json: { reviewData } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        -496
+      ],
+      "id": "25e3fdd0-32d3-42e3-a8a3-6272d1e5e546",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Flatten all reviews from all month objects\nconst allReviews = items.flatMap(item => item.json.reviews.map(review => ({\n  month: item.json.month,\n  row_number: review.row_number,\n  name: review.name,\n  rating: review.rating,\n  snippet: review.snippet,\n  date: review.date,\n  time: review.time\n})));\n\n// Convert array into a readable JSON string\nconst reviewData = JSON.stringify(allReviews, null, 2);\n\n// Return as a single JSON object\nreturn [\n  {\n    json: {\n      reviewData\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        -592
+      ],
+      "id": "5fd9014e-0296-4197-a6b4-0a6213b7b6d0",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.reviewData }}",
+        "options": {
+          "systemMessage": "You are a review analysis assistant.\nYou will receive an array of user reviews in JSON format.\nEach review contains the following fields:\n\nname: reviewer's name\n\nrating: numeric value (1–5)\n\nsnippet: the actual review text\n\nYour task is to analyze each review individually and return a new array of structured results with these fields:\n\nname – same as input.\n\nsentiment –\n\n\"Positive\" if rating > 3\n\n\"Negative\" if rating < 3\n\n\"Neutral\" if rating = 3\n\nemotion – detect the main feeling expressed in the snippet.\nPossible values: \"Impressed\", \"Satisfied\", or \"Disappointed\".\n\ntopics – list of key aspects mentioned in the snippet that influenced your emotion or sentiment.\n\ndate – the date of the review; if not provided, set to null.\n\ntime – the time of the review; if not provided, set to null.\n\nReturn the result as a JSON array, where each element follows this format:\n\n{\n  \"name\": \"User Name\",\n  \"sentiment\": \"Positive\",\n  \"emotion\": \"Satisfied\",\n  \"topics\": [\"Food\", \"Ambience\", \"Service\"],\n  \"date\": null,\n  \"time\": null\n}\n\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1968,
+        -592
+      ],
+      "id": "a763efb0-6375-43cb-afd3-9d854249a76a",
+      "name": "AI Agent",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1968,
+        -368
+      ],
+      "id": "a7affaa4-32a6-4ad9-a23c-f2e58d47eeb4",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JaJBurZRZS5adHyV",
+          "name": "Google Gemini(PaLM) Api account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================================================\n// 🔹 Combine and Clean AI Agent Review Batches (JSON-safe)\n// ====================================================================\n\nconst items = $input.all();\nlet allReviews = [];\n\nfor (const item of items) {\n  let raw = item.json.output;\n\n  if (!raw) continue;\n\n  // 🧹 Clean up Markdown formatting from AI output\n  raw = raw\n    .replace(/^```json/i, \"\")  // remove starting ```json\n    .replace(/^```/i, \"\")      // remove starting ```\n    .replace(/```$/i, \"\")      // remove ending ```\n    .trim();\n\n  let reviews = [];\n  try {\n    reviews = JSON.parse(raw);\n  } catch (err) {\n    console.error(\"❌ Failed to parse batch:\", err.message);\n    continue;\n  }\n\n  const filtered = reviews.map(r => ({\n    name: r.name || \"Unknown\",\n    sentiment: r.sentiment || \"Not specified\",\n    emotion: r.emotion || \"Not specified\",\n    topics: Array.isArray(r.topics)\n      ? r.topics.join(\", \")\n      : (r.topics || \"General\"),\n    date: r.date || null,\n    time: r.time || null,\n  }));\n\n  allReviews.push(...filtered);\n}\n\n// ✅ Return all reviews, one per item\nreturn allReviews.map(r => ({ json: r }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1616,
+        -592
+      ],
+      "id": "1677c5de-a986-42bf-a719-c19d6c27e339",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        -368
+      ],
+      "id": "7be9f87c-9ea0-4199-8b6a-eacb368fdea5",
+      "name": "Wait",
+      "webhookId": "8d4dcb75-b6d4-477a-9e2c-3d45ab4e6e60"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n    \"year\": 2025,\n    \"month\": 9,\n    \"positiveReviews\": 605,\n    \"neutralReviews\": 24,\n    \"negativeReviews\": 22,\n    \"dominantEmotions\": [\n      { \"name\": \"Impressed\", \"count\": 307 },\n      { \"name\": \"Satisfied\", \"count\": 293 },\n      { \"name\": \"Disappointed\", \"count\": 19 },\n      { \"name\": \"Neutral\", \"count\": 3 }\n    ],\n    \"strengths\": [\n      { \"name\": \"Ambience\", \"count\": 317 },\n      { \"name\": \"Food Quality\", \"count\": 174 }\n    ],\n    \"improvements\": [\n      { \"name\": \"Food Quality\", \"count\": 9 },\n      { \"name\": \"Price\", \"count\": 7 }\n    ],\n    \"issues\": [\n      {\n        \"category\": \"Food Quality\",\n        \"reviewers\": [\"Sagar Rana\",\"Loading 268\"],\n        \"suggestion\": \"Implement a multi-tiered quality control system.\"\n      }\n    ],\n    \"source\": \"Thoughtbins_Automated_Analysis_Team\",\n    \"generatedAt\": \"2025-10-31T23:59:59.000Z\"\n  }",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        -288
+      ],
+      "id": "6f8b12b7-687a-4161-9514-4e5b34b625ca",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -80
+      ],
+      "id": "e014ff3d-de8f-42b2-b188-e13efd9b4baa",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "iNhW6RahtsAXqW8b",
+          "name": "Google Gemini(PaLM) Api account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript10": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript11": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear sheet1": {
+      "main": [
+        []
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent6",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent6": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript14": {
+      "main": [
+        [
+          {
+            "node": "AI Agent7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent7": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent7",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Clear sheet1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent7",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8886161c-148d-4a09-8b52-befc50aaf6bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c2eb7cceb20c027e621e6af07a074e76bdc7dfd45cf01fa998cb0fa60d849a70"
+  },
+  "id": "tRhPCEzz9DW0ZSui",
+  "tags": []
+}
