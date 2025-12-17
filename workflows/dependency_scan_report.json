@@ -1,0 +1,20 @@
+{
+  "file": [
+    {
+      "file": [
+        {
+          "coordinates": "pkg:npm/jquery@3.2.1",
+          "description": "Fast, small, and feature-rich JavaScript library",
+          "reference": "https://www.npmjs.com/package/jquery",
+          "vulnerabilities": []
+        },
+        {
+          "coordinates": "pkg:npm/minimist@1.2.0",
+          "description": "Parse argument options",
+          "reference": "https://www.npmjs.com/package/minimist",
+          "vulnerabilities": []
+        }
+      ]
+    }
+  ]
+}
